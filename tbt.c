@@ -3,7 +3,8 @@
 #include <ctype.h>
 #include <string.h>
 
-struct Node {
+struct Node
+{
     int data;
     struct Node *left;
     struct Node *right;
@@ -12,21 +13,24 @@ struct Node {
 
 struct Node *root = NULL;
 
-/* -------- Utility Functions -------- */
-
-void clear_input() {
+void clear_input()
+{
     int c;
     while ((c = getchar()) != '\n');
 }
 
-int valid(char input[]) {
-    for (int i = 0; i < strlen(input); i++) {
-        if (!isdigit(input[i])) return 0;
+int valid(char input[])
+{
+    for (int i = 0; i < strlen(input); i++)
+    {
+        if (!isdigit(input[i]))
+            return 0;
     }
     return 1;
 }
 
-struct Node *createNode(int value) {
+struct Node *createNode(int value)
+{
     struct Node *newNode = (struct Node *)malloc(sizeof(struct Node));
     newNode->data = value;
     newNode->left = NULL;
@@ -35,44 +39,52 @@ struct Node *createNode(int value) {
     return newNode;
 }
 
-/* -------- Insert Function -------- */
-
-void insertNode(int data) {
+void insertNode(int data)
+{
     struct Node *newNode = createNode(data);
 
-    if (root == NULL) {
+    if (root == NULL)
+    {
         root = newNode;
         return;
     }
 
-    struct Node *current = root, *parent;
+    struct Node *current = root;
+    struct Node *parent = NULL;
 
-    while (1) {
+    while (1)
+    {
         parent = current;
-
-        if (data < current->data) {
+        if (data < current->data)
+        {
             if (current->left != NULL)
                 current = current->left;
-            else break;
-        } 
-        else if (data > current->data) {
+            else
+                break;
+        }
+        else if (data > current->data)
+        {
             if (current->rthread == 0)
                 current = current->right;
-            else break;
-        } 
-        else {
-            printf("Duplicate key!..\n");
+            else
+                break;
+        }
+        else
+        {
+            printf("Duplicate Key!..");
             free(newNode);
             return;
         }
     }
 
-    if (data < parent->data) {
+    if (data < parent->data)
+    {
         parent->left = newNode;
         newNode->right = parent;
         newNode->rthread = 1;
-    } 
-    else {
+    }
+    else
+    {
         newNode->right = parent->right;
         newNode->rthread = 1;
         parent->right = newNode;
@@ -80,25 +92,27 @@ void insertNode(int data) {
     }
 }
 
-/* -------- Leftmost Helper -------- */
-
-struct Node *leftMost(struct Node *n) {
-    while (n && n->left)
+struct Node *leftMost(struct Node *n)
+{
+    if (n == NULL)
+        return NULL;
+    while (n->left != NULL)
         n = n->left;
     return n;
 }
 
-/* -------- Inorder Traversal (Threaded) -------- */
-
-void threadedInOrder(struct Node *root) {
-    if (!root) {
-        printf("Tree is empty!\n");
+void threadedInOrder(struct Node *root)
+{
+    if (root == NULL)
+    {
+        printf("Tree is Empty!..");
         return;
     }
 
     struct Node *current = leftMost(root);
 
-    while (current) {
+    while (current != NULL)
+    {
         printf("%d ", current->data);
 
         if (current->rthread == 1)
@@ -108,59 +122,141 @@ void threadedInOrder(struct Node *root) {
     }
 }
 
-/* -------- Search Function -------- */
+// ------------------ DELETE FUNCTION -------------------
 
-struct Node* search(int key) {
-    struct Node *current = root;
+struct Node *findParent(int key)
+{
+    struct Node *current = root, *parent = NULL;
 
-    while (current) {
-        if (key == current->data)
-            return current;
-
+    while (current != NULL)
+    {
         if (key < current->data)
+        {
+            if (current->left == NULL) break;
+            parent = current;
             current = current->left;
-        else {
-            if (current->rthread == 0)
-                current = current->right;
-            else break;
+        }
+        else if (key > current->data)
+        {
+            if (current->rthread == 1) break;
+            parent = current;
+            current = current->right;
+        }
+        else
+        {
+            break;
         }
     }
-    return NULL;
+    return parent;
 }
 
-/* -------- Update (Search + Replace) -------- */
+void deleteNode(int key)
+{
+    struct Node *parent = NULL, *current = root;
 
-void updateNode(int oldVal, int newVal) {
-    struct Node *node = search(oldVal);
+    // Search node
+    while (current != NULL)
+    {
+        if (key < current->data)
+        {
+            parent = current;
+            current = current->left;
+        }
+        else if (key > current->data)
+        {
+            if (current->rthread == 1)
+                current = NULL;
+            else
+            {
+                parent = current;
+                current = current->right;
+            }
+        }
+        else
+            break;
+    }
 
-    if (!node) {
-        printf("Value %d not found! Cannot update.\n", oldVal);
+    if (current == NULL)
+    {
+        printf("Value not found!\n");
         return;
     }
 
-    delete(node->data); // optional: if delete was implemented
+    // Case 1: Node has no left child
+    if (current->left == NULL && current->rthread == 1)
+    {
+        if (parent == NULL)
+            root = NULL;
+        else if (parent->left == current)
+            parent->left = NULL;
+        else
+        {
+            parent->right = current->right;
+            parent->rthread = 1;
+        }
+        free(current);
+    }
+    // Case 2: Node has only left child
+    else if (current->left != NULL && current->rthread == 1)
+    {
+        struct Node *pred = current->left;
+        while (pred->right != current)
+            pred = pred->right;
 
-    node->data = newVal;
-    printf("Node updated: %d → %d\n", oldVal, newVal);
+        pred->right = current->right;
+
+        if (parent == NULL)
+            root = current->left;
+        else if (parent->left == current)
+            parent->left = current->left;
+        else
+            parent->right = current->left;
+
+        free(current);
+    }
+    // Case 3: Node has a real right subtree — find inorder successor
+    else
+    {
+        struct Node *succ_parent = current;
+        struct Node *succ = current->right;
+
+        while (succ->left != NULL)
+        {
+            succ_parent = succ;
+            succ = succ->left;
+        }
+
+        current->data = succ->data;
+        deleteNode(succ->data);
+    }
 }
 
-/* -------- MENU -------- */
+// ------------------ UPDATE FUNCTION -------------------
 
-int main() {
-    int choice, value, oldVal, newVal;
+void updateNode(int oldValue, int newValue)
+{
+    deleteNode(oldValue);
+    insertNode(newValue);
+}
+
+int main()
+{
+    int choice, value, newValue;
     char input[10];
 
-    while (1) {
-        printf("\n--- Threaded Binary Tree Menu ---\n");
+    while (1)
+    {
+        printf("\n--- Threaded Tree Menu ---\n");
         printf("1. Insert Node\n");
-        printf("2. Search Node\n");
-        printf("3. Update Node\n");
-        printf("4. InOrder (Threaded Traversal)\n");
+        printf("2. Display InOrder (Threaded)\n");
+        printf("3. Delete Node\n");
+        printf("4. Update Node\n");
         printf("5. Exit\n");
-        printf("Enter choice: ");
+        printf("Enter your choice: ");
         scanf("%s", input);
 
-        if (!valid(input)) {
+        if (!valid(input))
+        {
             printf("Invalid input!\n");
             clear_input();
             continue;
@@ -168,48 +264,48 @@ int main() {
 
         choice = atoi(input);
 
-        switch (choice) {
+        switch (choice)
+        {
         case 1:
-            printf("Enter value to insert: ");
+            printf("Enter value to Insert: ");
             scanf("%s", input);
-            if (!valid(input)) {
-                printf("Invalid number!\n");
-                break;
-            }
-            insertNode(atoi(input));
+            if (!valid(input)) { printf("Invalid input!\n"); continue; }
+            value = atoi(input);
+            insertNode(value);
             break;
 
         case 2:
-            printf("Enter value to search: ");
-            scanf("%s", input);
-            if (!valid(input)) break;
-
-            struct Node *res;
-            res = search(atoi(input));
-            if (res)
-                printf("Value found: %d\n", res->data);
-            else
-                printf("Value not found.\n");
-            break;
-
-        case 3:
-            printf("Enter existing value: ");
-            scanf("%d", &oldVal);
-            printf("Enter new value: ");
-            scanf("%d", &newVal);
-            updateNode(oldVal, newVal);
-            break;
-
-        case 4:
             threadedInOrder(root);
             break;
 
+        case 3:
+            printf("Enter value to Delete: ");
+            scanf("%s", input);
+            if (!valid(input)) { printf("Invalid input!\n"); continue; }
+            value = atoi(input);
+            deleteNode(value);
+            break;
+
+        case 4:
+            printf("Enter old value: ");
+            scanf("%s", input);
+            if (!valid(input)) { printf("Invalid input!\n"); continue; }
+            value = atoi(input);
+
+            printf("Enter new value: ");
+            scanf("%s", input);
+            if (!valid(input)) { printf("Invalid input!\n"); continue; }
+            newValue = atoi(input);
+
+            updateNode(value, newValue);
+            break;
+
         case 5:
-            printf("Exiting... 😊\n");
+            printf("Exiting Program.\n");
             exit(0);
 
         default:
-            printf("Invalid choice!\n");
+            printf("Invalid choice! Try again.\n");
         }
     }
 
